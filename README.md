@@ -1,6 +1,7 @@
 # Jack-Stack
 <!-- [![Build Status][build-image]][build-url] -->
 [![NPM version][npm-image]][npm-url]
+[![Downloads][downloads-image]][downloads-url]
 [![Tips][gratipay-image]][gratipay-url]
 
 A Jack-of-Express-stack; master of nothing else.
@@ -170,5 +171,7 @@ $ babel index.js --watch --out-file es5.js
 [build-url]: https://travis-ci.org/dncrews/jack-stack
 [npm-image]: https://img.shields.io/npm/v/jack-stack.svg
 [npm-url]: https://www.npmjs.org/package/jack-stack
+[downloads-image]: https://img.shields.io/npm/dm/jack-stack.svg
+[downloads-url]: https://www.npmjs.org/package/jack-stack
 [gratipay-image]: https://img.shields.io/gratipay/dncrews.svg
 [gratipay-url]: https://www.gratipay.com/dncrews/
