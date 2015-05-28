@@ -156,6 +156,49 @@ app.on('before.init.routing', function() {
   - `routing` - Express router
 
 
+### Custom Events
+You can also use these events for your own middleware if you'd like. Simply use the exported `wrap` method for wrapping your own middleware:
+
+#### ES6
+First place:
+```js
+import { app, wrap } from 'jack-stack';
+
+wrap('nameOfThis', () => {
+  app.use(someMiddleware());
+});
+```
+
+Elsewhere:
+```js
+app.on('before.init.nameOfThis', () => {
+  app.use(somethingBeforeThat());
+});
+```
+
+#### ES5
+First place:
+```js
+var jack = require('jack-stack');
+
+var app = jack.app
+  , wrap = jack.wrap;
+
+wrap('nameOfThis', function() {
+  app.use(someMiddleware());
+});
+```
+
+Elsewhere:
+```js
+app.on('before.init.nameOfThis', function() {
+  app.use(somethingBeforeThat());
+});
+```
+
+
+
+
 
 ## Contribution
 We'd love you to contribute. To work on it locally, simply clone the repo and use babel to generate the es5 stuff:
