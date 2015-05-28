@@ -1,5 +1,5 @@
 # Jack-Stack
-A Jack-of-Express-stack, master of nothing else.
+A Jack-of-Express-stack; master of nothing else.
 
 ## Purpose
 Jack-Stack handles all of the standard [Express.js](http://expressjs.com/) app configuration you don't really care about.
