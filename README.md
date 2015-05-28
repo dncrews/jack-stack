@@ -1,4 +1,8 @@
 # Jack-Stack
+<!-- [![Build Status][build-image]][build-url] -->
+[![NPM version][npm-image]][npm-url]
+[![Tips][gratipay-image]][gratipay-url]
+
 A Jack-of-Express-stack; master of nothing else.
 
 ## Purpose
@@ -161,3 +165,10 @@ $ git clone https://github.com/dncrews/jack-stack.git .
 $ cd jack-stack
 $ babel index.js --watch --out-file es5.js
 ```
+
+[build-image]: https://travis-ci.org/dncrews/jack-stack.svg?branch=master
+[build-url]: https://travis-ci.org/dncrews/jack-stack
+[npm-image]: https://img.shields.io/npm/v/jack-stack.svg
+[npm-url]: https://www.npmjs.org/package/jack-stack
+[gratipay-image]: https://img.shields.io/gratipay/dncrews.svg
+[gratipay-url]: https://www.gratipay.com/dncrews/
