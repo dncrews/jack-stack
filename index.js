@@ -172,6 +172,12 @@ export function start(cb) {
     .then(appListen.bind(app, config.port))
     .then(() => {
       if (cb) cb();
+    })
+    .catch((err) => {
+      console.error(err);
+      if (cb) cb(err);
+
+      throw err;
     });
 
   function appListen(port) {

@@ -151,29 +151,30 @@ We'll use the parameter that gets passed up with the event: `registerDelay`, whi
 import { app, init, start } from 'jack-stack';
 
 app.on('after.init.session', (registerDelay) => {
-  var _middleware = function(req, res, next) { next(); }; // Failure fallback
 
-  // Register the endpoint here
-  app.get('/login', (req, res, next) => {
-    // Call your middleware here
-    return _middleware(req, res, next);
-  });
-
-  // Use `registerDelay` to add your callback to delay app startup
-  registerDelay(new Promise((resolve, reject) => {
-    request.get('/something')
-      .then((err, res) => {
+  // Prep your async stuff
+  var _promise = new Promise((resolve, reject) => {
+    return request.get('/something')
+      .then((res) => {
 
         // Configure your actual middleware asynchronously
         // Aren't closures the best?!
-        _middleware = (req, res, next) => {
+        resolve((req, res, next) => {
           // Something here using your response
-        };
-      });
+        });
+      })
+      .catch(reject);
+  });
 
-    // Make sure you resolve this, or your app will never start
-    resolve();
-  }));
+  // Register the endpoint here, synchronously
+  app.get('/login', (req, res, next) => {
+
+    // Call the middleware you define [in your promise] here
+    return _promise.then(middleware => middleware(req, res, next));
+  });
+
+  // Let me know you want to delay startup to avoid server hand-off
+  registerDelay(_promise);
 });
 
 start();
@@ -188,29 +189,32 @@ var app = jack.app
   , start = jack.start;
 
 app.on('after.init.session', function(registerDelay) {
-  var _middleware = function(req, res, next) { next(); }; // Failure fallback
 
-  // Register the endpoint here
-  app.get('/login', function(req, res, next) {
-    // Call your middleware here
-    return _middleware(req, res, next);
-  });
-
-  // Use `registerDelay` to add your callback to delay app startup
-  registerDelay(new Promise(function(resolve, reject) {
-    request.get('/something')
-      .then(function(err, res) {
+  // Prep your async stuff
+  var _promise = new Promise(function(resolve, reject) {
+    return request.get('/something')
+      .then(function(res) {
 
         // Configure your actual middleware asynchronously
         // Aren't closures the best?!
-        _middleware = function(req, res, next) {
+        resolve(function(req, res, next) {
           // Something here using your response
-        };
-      });
+        });
+      })
+      .catch(reject);
+  });
 
-    // Make sure you resolve this, or your app will never start
-    resolve();
-  }));
+  // Register the endpoint here, synchronously
+  app.get('/login', function(req, res, next) {
+
+    // Call the middleware you define [in your promise] here
+    return _promise.then(function(middleware) {
+      middleware(req, res, next)
+    });
+  });
+
+  // Let me know you want to delay startup to avoid server hand-off
+  registerDelay(_promise);
 });
 
 start();

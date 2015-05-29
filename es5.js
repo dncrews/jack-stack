@@ -209,6 +209,11 @@ function start(cb) {
 
   return _bluebird2['default'].all(delays).then(appListen.bind(app, config.port)).then(function () {
     if (cb) cb();
+  })['catch'](function (err) {
+    console.error(err);
+    if (cb) cb(err);
+
+    throw err;
   });
 
   function appListen(port) {
