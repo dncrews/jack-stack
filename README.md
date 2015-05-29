@@ -158,7 +158,6 @@ app.on('after.init.session', (registerDelay) => {
       .then((res) => {
 
         // Configure your actual middleware asynchronously
-        // Aren't closures the best?!
         resolve((req, res, next) => {
           // Something here using your response
         });
@@ -196,7 +195,6 @@ app.on('after.init.session', function(registerDelay) {
       .then(function(res) {
 
         // Configure your actual middleware asynchronously
-        // Aren't closures the best?!
         resolve(function(req, res, next) {
           // Something here using your response
         });
