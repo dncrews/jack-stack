@@ -57,18 +57,27 @@ var config = {
 };
 
 /**
- * Used to make sure the express app is initialized before starting
+ * Used to validate if experiments are enabled or not
  */
-var initialized = false;
+var delays = [];
 /**
  * Used to validate if experiments are enabled or not
  */
 var experimented = false;
+/**
+ * Used to make sure the express app is initialized before starting
+ */
+var initialized = false;
 
 function wrapEvents(name, fn) {
-  app.emit(`before.init.${name}`);
+  app.emit(`before.init.${name}`, registerDelay);
   fn();
-  app.emit(`after.init.${name}`);
+  app.emit(`after.init.${name}`, registerDelay);
+
+  function registerDelay(promise) {
+    if (typeof promise.next !== 'function') return;
+    delays.push(promise);
+  }
 }
 
 function init() {
@@ -122,6 +131,13 @@ function init() {
 
     app.use(featureClient.express);
     app.use(featureClient.toggle);
+
+    delays.push(featureClient.announce()
+      .catch(() => {
+        // If there's no XPRMNTL Dashboard response,
+        // I want to start the app anyway, just with the fallbacks
+        return Promise.resolve();
+      }));
   });
 
   // parse application/json
@@ -152,10 +168,8 @@ function init() {
 export function start(cb) {
   if (! initialized) init();
 
-  let _promise = experimented ? featureClient.announce() : Promise.resolve();
-
-  return _promise
-    .finally(appListen.bind(app, config.port))
+  return Promise.all(delays)
+    .then(appListen.bind(app, config.port))
     .then(() => {
       if (cb) cb();
     });

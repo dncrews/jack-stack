@@ -141,6 +141,66 @@ app.on('before.init.routing', function() {
 });
 ```
 
+### Async Middleware
+The big problem with adding middleware asynchronously is that you need to register a middleware during your event or it'll get out of order. To solve this, we'll add our middleware, delay startup until after our middleware is configured, and then configure it.
+
+#### ES6
+```js
+import { app, init, start } from 'jack-stack';
+
+app.on('after.init.session', (registerDelay) => {
+  var _middleware = function(req, res, next) { next(); }; // Failure fallback
+
+  app.get('/login', (req, res, next) => {
+    return _middleware(req, res, next);
+  });
+
+  registerDelay(new Promise((resolve, reject) => {
+    request.get('/something')
+      .then((err, res) => {
+        _middleware = (req, res, next) => {
+          // Something here using your response
+        };
+      });
+
+    resolve();
+  }));
+});
+
+start();
+```
+
+#### ES5
+```js
+var Promise = require('bluebird');
+var jack = require('jack-stack');
+var app = jack.app
+  , init = jack.init
+  , start = jack.start;
+
+app.on('after.init.session', function(registerDelay) {
+  var _middleware = function(req, res, next) { next(); }; // Failure fallback
+
+  app.get('/login', function(req, res, next) {
+    return _middleware(req, res, next);
+  });
+
+  registerDelay(new Promise(function(resolve, reject) {
+    request.get('/something')
+      .then(function(err, res) {
+        _middleware = function(req, res, next) {
+          // Something here using your response
+        };
+      });
+
+    resolve();
+  }));
+});
+
+start();
+```
+
+
 ### Current events
 `before.init.`
 `after.init.`
