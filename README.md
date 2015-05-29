@@ -144,6 +144,8 @@ app.on('before.init.routing', function() {
 ### Async Middleware
 The big problem with adding middleware asynchronously is that you need to register a middleware during your event or it'll get out of order. To solve this, we'll add our middleware, delay startup until after our middleware is configured, and then configure it.
 
+We'll use the parameter that gets passed up with the event: `registerDelay`, which accepts Promises;
+
 #### ES6
 ```js
 import { app, init, start } from 'jack-stack';
@@ -157,6 +159,7 @@ app.on('after.init.session', (registerDelay) => {
     return _middleware(req, res, next);
   });
 
+  // Use `registerDelay` to add your callback to delay app startup
   registerDelay(new Promise((resolve, reject) => {
     request.get('/something')
       .then((err, res) => {
@@ -168,6 +171,7 @@ app.on('after.init.session', (registerDelay) => {
         };
       });
 
+    // Make sure you resolve this, or your app will never start
     resolve();
   }));
 });
@@ -192,6 +196,7 @@ app.on('after.init.session', function(registerDelay) {
     return _middleware(req, res, next);
   });
 
+  // Use `registerDelay` to add your callback to delay app startup
   registerDelay(new Promise(function(resolve, reject) {
     request.get('/something')
       .then(function(err, res) {
@@ -203,6 +208,7 @@ app.on('after.init.session', function(registerDelay) {
         };
       });
 
+    // Make sure you resolve this, or your app will never start
     resolve();
   }));
 });

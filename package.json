@@ -1,6 +1,6 @@
 {
   "name": "jack-stack",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Jack-of-Express-stack; master of nothing else.",
   "main": "index.js",
   "scripts": {
