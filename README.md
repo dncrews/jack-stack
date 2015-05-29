@@ -151,13 +151,18 @@ import { app, init, start } from 'jack-stack';
 app.on('after.init.session', (registerDelay) => {
   var _middleware = function(req, res, next) { next(); }; // Failure fallback
 
+  // Register the endpoint here
   app.get('/login', (req, res, next) => {
+    // Call your middleware here
     return _middleware(req, res, next);
   });
 
   registerDelay(new Promise((resolve, reject) => {
     request.get('/something')
       .then((err, res) => {
+
+        // Configure your actual middleware asynchronously
+        // Aren't closures the best?!
         _middleware = (req, res, next) => {
           // Something here using your response
         };
@@ -181,13 +186,18 @@ var app = jack.app
 app.on('after.init.session', function(registerDelay) {
   var _middleware = function(req, res, next) { next(); }; // Failure fallback
 
+  // Register the endpoint here
   app.get('/login', function(req, res, next) {
+    // Call your middleware here
     return _middleware(req, res, next);
   });
 
   registerDelay(new Promise(function(resolve, reject) {
     request.get('/something')
       .then(function(err, res) {
+
+        // Configure your actual middleware asynchronously
+        // Aren't closures the best?!
         _middleware = function(req, res, next) {
           // Something here using your response
         };
