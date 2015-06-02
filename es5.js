@@ -4,6 +4,7 @@ Object.defineProperty(exports, '__esModule', {
   value: true
 });
 exports.start = start;
+exports.use = use;
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -92,7 +93,9 @@ var config = {
       extended: false }
   },
   morgan: 'dev',
-  staticDir: _path2['default'].join(process.cwd(), 'public'),
+  dirnames: {
+    'static': [_path2['default'].join(process.cwd(), 'public')],
+    routes: [_path2['default'].join(process.cwd(), 'routes')] },
   port: 5000,
   assign: function assign(newConfig) {
     Object.assign(config, newConfig);
@@ -130,7 +133,13 @@ function init() {
 
   // Load static assets
   wrapEvents('static', function () {
-    app.use(_express2['default']['static'](config.staticDir));
+    var dirs = config.dirnames['static'];
+
+    if (!Array.isArray(dirs)) dirs = [dirs];
+
+    dirs.map(function (dir) {
+      app.use(_express2['default']['static'](dir));
+    });
   });
 
   // Log everything after this
@@ -225,8 +234,17 @@ function start(cb) {
   }
 }
 
+function use(modules) {
+  if (!Array.isArray(modules)) modules = [modules];
+
+  modules.map(function (module) {
+    app.on(module.event, module.handler);
+  });
+}
+
+exports['default'] = { app: app, start: start, init: init, wrap: wrapEvents, use: use };
 exports.init = init;
 exports.start = start;
 exports.wrap = wrapEvents;
 exports.app = app;
-exports['default'] = app;
+exports.use = use;

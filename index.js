@@ -49,7 +49,10 @@ var config = {
     }
   },
   morgan: 'dev',
-  staticDir: path.join(process.cwd(), 'public'),
+  dirnames: {
+    'static': [ path.join(process.cwd(), 'public') ],
+    routes: [ path.join(process.cwd(), 'routes') ],
+  },
   port: 5000,
   assign: (newConfig) => {
     Object.assign(config, newConfig);
@@ -88,7 +91,13 @@ function init() {
 
   // Load static assets
   wrapEvents('static', () => {
-    app.use(express.static(config.staticDir));
+    var dirs = config.dirnames.static;
+
+    if (! Array.isArray(dirs)) dirs = [ dirs ];
+
+    dirs.map((dir) => {
+      app.use(express.static(dir));
+    });
   });
 
   // Log everything after this
@@ -187,4 +196,14 @@ export function start(cb) {
   }
 }
 
-export { init, start, wrapEvents as wrap, app, app as default };
+export function use(modules) {
+  if (! Array.isArray(modules)) modules = [ modules ];
+
+  modules.map((module) => {
+    app.on(module.event, module.handler);
+  });
+}
+
+export default { app, start, init, wrap: wrapEvents, use }
+
+export { init, start, wrapEvents as wrap, app, use };

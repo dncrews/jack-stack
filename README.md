@@ -274,7 +274,46 @@ app.on('before.init.nameOfThis', function() {
 });
 ```
 
+### Plugins
 
+
+#### Known Plugins
+- [jack-stack-redis](https://github.com/dncrews/jack-stack-redis) - Connect-Redis RedisStore session storage to replace the built-in MemoryStore one, which is "no bueno" for production.
+- [Your Plugin Here] - Please feel free to create your own. If you do and you'd like to have it listed here, please create me a Pull Request adding it. I appreciate your contributions!
+
+#### Plugin Authoring
+Plugin authoring is handled in the same way events are. Any initialized plugin should return the following structure (or an array of them):
+
+```js
+{
+  event: 'name.of.event',
+  handler: function() {
+    // handler stuff
+  }
+}
+```
+
+You can then use `jack.use` to implement these plugins:
+```js
+var jack = require('jack-stack');
+var start = jack.start;
+var redisConfig = {
+  host: 'localhost',
+  port: 6379
+};
+
+var redisPlugin = require('jack-stack-redis')(redisConfig);
+// This returns
+// {
+//   event: 'config',
+//   handler: function(config) {
+//     config.session.getStore = () => {
+//       return new RedisStore(redisConfig);
+//     };
+//   }
+// }
+jack.use(redisPlugin);
+```
 
 
 
