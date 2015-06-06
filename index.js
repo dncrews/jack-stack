@@ -11,12 +11,14 @@ import path from 'path';
 import bodyParser from 'body-parser';
 import compress from 'compression';
 import cookieParser from 'cookie-parser';
-import express from 'express';
+import debugLib from 'debug';
+import express, { Router } from 'express';
 import expressSession from 'express-session';
+import featureClient from 'feature-client';
+import glob from 'glob';
 import methodOverride from 'method-override';
 import morgan from 'morgan';
 import Promise from 'bluebird';
-import featureClient from 'feature-client';
 import xprExpress from 'xpr-express';
 import xprToggle from 'xpr-toggle';
 
@@ -28,6 +30,8 @@ import xprToggle from 'xpr-toggle';
  * Local Constants
  */
 const app = express();
+const debug = debugLib('jack-stack');
+const routerMatch = Router();
 
 /**
  * This config object will be overridable during the `config` event
@@ -88,9 +92,11 @@ function init() {
   initialized = true;
 
   app.emit('config', config);
+  app.emit('after.config', config);
 
   // Load static assets
   wrapEvents('static', () => {
+    debug('static');
     var dirs = config.dirnames.static;
 
     if (! Array.isArray(dirs)) dirs = [ dirs ];
@@ -102,22 +108,26 @@ function init() {
 
   // Log everything after this
   wrapEvents('logging', () => {
+    debug('logging');
     app.use(morgan(config.morgan));
   });
 
   // req.cookie
   wrapEvents('cookie', () => {
+    debug('cookie');
     app.use(cookieParser(config.cookie.secret));
   });
 
   // req.user
   wrapEvents('session', () => {
+    debug('session');
+
     let store = config.session.getStore(expressSession);
     let sessionConfig = {
       key : config.session.name,
       secret : config.session.secret,
       resave: false,
-      saveUninitialized: false,
+      saveUninitialized: false
     };
 
     if (store) sessionConfig.store = store;
@@ -127,6 +137,7 @@ function init() {
 
   // Req.feature
   wrapEvents('xprmntl', () => {
+    debug('xprmntl');
     let xprConfig = config.experiments;
 
     experimented = !! xprConfig;
@@ -151,26 +162,66 @@ function init() {
 
   // parse application/json
   wrapEvents('json', () => {
+    debug('json');
     app.use(bodyParser.json(config.bodyParser.json));
   });
 
   // parse application/x-www-form-urlencoded
   wrapEvents('urlencoded', () => {
+    debug('urlencoded');
     app.use(bodyParser.urlencoded(config.bodyParser.urlencoded));
   });
 
   // Fake PUT and DELETE when clients don't support
   wrapEvents('override', () => {
+    debug('override');
     app.use(methodOverride(config.methodOverride));
   });
 
   // GZip all of our responses
   wrapEvents('compress', () => {
+    debug('compress');
     app.use(compress(config.compression));
   });
 
   // Any routing level stuff
-  wrapEvents('routing', () => {});
+  wrapEvents('routing', () => {
+    debug('routing');
+    let dirs = config.dirnames.routes;
+
+    if (! Array.isArray(dirs)) dirs = [ dirs ];
+
+    var allFiles = [];
+
+    // Dir order matters
+    dirs.forEach((dir) => {
+      var dirFiles = {};
+
+      glob.sync(path.join(dir, '**', '*.js'))
+        .forEach((filename) => {
+          let route = filename
+            .replace(dir, '') // Get just the file
+            .replace(/\.js$/, '') // Basename
+            .replace(/index$/, ''); // And use index as './'
+          dirFiles[route] = filename;
+        });
+
+      // Sort by the path, since '/' needs to come first
+      Object.keys(dirFiles).sort().forEach((route) => {
+        let filename = dirFiles[route];
+        debug(route, filename);
+        let file = require(filename);
+
+        if (file instanceof routerMatch.constructor) return app.use(route, file);
+
+        if (typeof t === 'function' && t.length === 2) return require(file)(app);
+
+        console.error(`\n\n\nFile incompatible and not loaded: ${file}\n\n\n`);
+      });
+    });
+
+    debug('routing done');
+  });
 
 }
 
@@ -204,6 +255,6 @@ export function use(modules) {
   });
 }
 
-export default { app, start, init, wrap: wrapEvents, use }
+export default { app, start, init, wrap: wrapEvents, use, Router }
 
-export { init, start, wrapEvents as wrap, app, use };
+export { init, start, wrapEvents as wrap, app, use, Router };
