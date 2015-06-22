@@ -1,6 +1,6 @@
 {
   "name": "jack-stack",
-  "version": "0.12.0",
+  "version": "1.0.0",
   "description": "Jack-of-Express-stack; master of nothing else.",
   "main": "index.js",
   "scripts": {
@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/dncrews/jack-stack#readme",
   "dependencies": {
-    "babel": "^5.4.7",
+    "babel": "^5.5.6",
     "babel-runtime": "^5.4.7",
     "bluebird": "^2.9.26",
     "body-parser": "^1.12.4",

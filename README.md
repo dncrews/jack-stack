@@ -31,14 +31,14 @@ $ npm install --save jack-stack
 ```
 
 ## Usage
-This library was written using ES6 (ES 2015), but can still be used by ES5.
+This library was written using ES6 (ES 2015), but it is compiled to ES5.1, and uses that by default.
 
 
 ### ES6
 
 ```js
 // Import jack's parts
-import { app, init, start } from 'jack-stack';
+import { app, init, start } from 'jack-stack/es6';
 
 // Configure your app
 app.get('/', (req, res, next) => {
@@ -55,7 +55,7 @@ start(() => {
 ### ES5
 ```js
 // Require Jack's ES5 library
-var jack = require('jack-stack/es5');
+var jack = require('jack-stack');
 
 // Set the parts
 var app = jack.app;
@@ -77,7 +77,7 @@ start(function() {
 Jack lets you know when it's ready for you to pass in configuration. You can either overwrite specific keys, or you can pass a full object to merge with `config`;
 
 ```js
-import app, { start } from 'jack-stack';
+import app, { start } from 'jack-stack/es6';
 
 app.on('config', function(config) {
   // Here you can do something with the config:
@@ -132,7 +132,7 @@ start();
 If you want to add your own middleware during the initialization stage of the app, you can use the `before` and `after` events.
 
 ```js
-import { app, init, start } from 'jack-stack';
+import { app, init, start } from 'jack-stack/es6';
 
 app.on('before.init.routing', function() {
   app.get('/', function(req, res, next) {
@@ -148,7 +148,7 @@ We'll use the parameter that gets passed up with the event: `registerDelay`, whi
 
 #### ES6
 ```js
-import { app, init, start } from 'jack-stack';
+import { app, init, start } from 'jack-stack/es6';
 
 app.on('after.init.session', (registerDelay) => {
 
@@ -240,7 +240,7 @@ You can also use these events for your own middleware if you'd like. Simply use 
 #### ES6
 First place:
 ```js
-import { app, wrap } from 'jack-stack';
+import { app, wrap } from 'jack-stack/es6';
 
 wrap('nameOfThis', () => {
   app.use(someMiddleware());
@@ -324,7 +324,7 @@ We'd love you to contribute. To work on it locally, simply clone the repo and us
 $ npm install -g babel
 $ git clone https://github.com/dncrews/jack-stack.git .
 $ cd jack-stack
-$ babel index.js --watch --out-file es5.js
+$ babel es6.js --watch --out-file index.js
 ```
 
 [build-image]: https://travis-ci.org/dncrews/jack-stack.svg?branch=master
