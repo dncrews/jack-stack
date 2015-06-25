@@ -95,6 +95,7 @@ var config = {
       console.warn('\n\n\nExpress MemoryStore should not be used in production...\n\n\n');
     }
   },
+  experiments: ['placeholderExperiment'],
   bodyParser: {
     urlencoded: {
       extended: false }
@@ -120,11 +121,27 @@ var experimented = false;
  * Used to make sure the express app is initialized before starting
  */
 var initialized = false;
+/**
+ * Used for event short-names
+ */
+var registeredEvents = [];
+/**
+ * Used to log the initialization order of middleware, etc
+ */
+var initOrder = 1;
 
-function wrapEvents(name, fn) {
+function wrap(name, fn) {
+  registeredEvents.push(name);
+  var eventData = {
+    app: app,
+    config: config,
+    registerDelay: registerDelay };
+  app.emit('before.' + name, eventData);
   app.emit('before.init.' + name, registerDelay);
+  console.log('' + initOrder++ + ': ' + name);
   fn();
   app.emit('after.init.' + name, registerDelay);
+  app.emit('after.' + name, eventData);
 
   function registerDelay(promise) {
     if (typeof promise.next !== 'function') return;
@@ -140,7 +157,7 @@ function init() {
   app.emit('after.config', config);
 
   // Load static assets
-  wrapEvents('static', function () {
+  wrap('static', function () {
     debug('static');
     var dirs = config.dirnames['static'];
 
@@ -152,22 +169,24 @@ function init() {
   });
 
   // Log everything after this
-  wrapEvents('logging', function () {
+  wrap('logging', function () {
     debug('logging');
     app.use((0, _morgan2['default'])(config.morgan));
   });
 
   // Req.cookie
-  wrapEvents('cookie', function () {
+  wrap('cookie', function () {
     debug('cookie');
     app.use((0, _cookieParser2['default'])(config.cookie.secret));
   });
 
   // Req.user
-  wrapEvents('session', function () {
+  wrap('session', function () {
     debug('session');
 
     var store = config.session.getStore(_expressSession2['default']);
+
+    config.session.store = store;
     var sessionConfig = {
       key: config.session.name,
       secret: config.session.secret,
@@ -181,7 +200,7 @@ function init() {
   });
 
   // Req.feature
-  wrapEvents('xprmntl', function () {
+  wrap('xprmntl', function () {
     debug('xprmntl');
     var xprConfig = config.experiments;
 
@@ -205,31 +224,31 @@ function init() {
   });
 
   // Parse application/json
-  wrapEvents('json', function () {
+  wrap('json', function () {
     debug('json');
     app.use(_bodyParser2['default'].json(config.bodyParser.json));
   });
 
   // Parse application/x-www-form-urlencoded
-  wrapEvents('urlencoded', function () {
+  wrap('urlencoded', function () {
     debug('urlencoded');
     app.use(_bodyParser2['default'].urlencoded(config.bodyParser.urlencoded));
   });
 
   // Fake PUT and DELETE when clients don't support
-  wrapEvents('override', function () {
+  wrap('override', function () {
     debug('override');
     app.use((0, _methodOverride2['default'])(config.methodOverride));
   });
 
   // GZip all of our responses
-  wrapEvents('compress', function () {
+  wrap('compress', function () {
     debug('compress');
     app.use((0, _compression2['default'])(config.compression));
   });
 
   // Any routing level stuff
-  wrapEvents('routing', function () {
+  wrap('routing', function () {
     debug('routing');
     var dirs = config.dirnames.routes;
 
@@ -278,11 +297,33 @@ function start(cb) {
 
   function appListen(port) {
     return new _bluebird2['default'](function (resolve) {
+      if (config.sockets.server) {
+        return config.sockets.server.listen(port, function () {
+          return resolve();
+        });
+      }
+
       app.listen(port, function () {
         return resolve();
       });
     });
   }
+}
+
+var useBefore = app.useBefore = useAround('before.');
+var useAfter = app.useAfter = useAround('after.');
+
+function useAround(prefix) {
+  return function (method, name, handler) {
+    var eventName = prefix + method;
+
+    if (typeof name === 'function') throw new Error('No name provided: useAround(\'' + eventName + '\')');
+    app.on('' + eventName, function (data) {
+      wrap(name, function () {
+        handler(data);
+      });
+    });
+  };
 }
 
 function use(modules) {
@@ -293,10 +334,12 @@ function use(modules) {
   });
 }
 
-exports['default'] = { app: app, start: start, init: init, wrap: wrapEvents, use: use, Router: _express.Router };
+exports['default'] = { app: app, start: start, init: init, wrap: wrap, use: use, useAfter: useAfter, useBefore: useBefore, Router: _express.Router };
 exports.init = init;
 exports.start = start;
-exports.wrap = wrapEvents;
+exports.wrap = wrap;
 exports.app = app;
 exports.use = use;
+exports.useAfter = useAfter;
+exports.useBefore = useBefore;
 exports.Router = _express.Router;

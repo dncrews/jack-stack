@@ -45,6 +45,7 @@ var config = {
       console.warn('\n\n\nExpress MemoryStore should not be used in production...\n\n\n');
     }
   },
+  experiments: [ 'placeholderExperiment' ],
   bodyParser: {
     urlencoded: {
       extended: false,
@@ -73,11 +74,28 @@ var experimented = false;
  * Used to make sure the express app is initialized before starting
  */
 var initialized = false;
+/**
+ * Used for event short-names
+ */
+var registeredEvents = [];
+/**
+ * Used to log the initialization order of middleware, etc
+ */
+var initOrder = 1;
 
-function wrapEvents(name, fn) {
+function wrap(name, fn) {
+  registeredEvents.push(name);
+  let eventData = {
+    app,
+    config,
+    registerDelay,
+  };
+  app.emit(`before.${name}`, eventData);
   app.emit(`before.init.${name}`, registerDelay);
+  console.log(`${initOrder++}: ${name}`);
   fn();
   app.emit(`after.init.${name}`, registerDelay);
+  app.emit(`after.${name}`, eventData);
 
   function registerDelay(promise) {
     if (typeof promise.next !== 'function') return;
@@ -93,7 +111,7 @@ function init() {
   app.emit('after.config', config);
 
   // Load static assets
-  wrapEvents('static', () => {
+  wrap('static', () => {
     debug('static');
     var dirs = config.dirnames.static;
 
@@ -105,22 +123,24 @@ function init() {
   });
 
   // Log everything after this
-  wrapEvents('logging', () => {
+  wrap('logging', () => {
     debug('logging');
     app.use(morgan(config.morgan));
   });
 
   // Req.cookie
-  wrapEvents('cookie', () => {
+  wrap('cookie', () => {
     debug('cookie');
     app.use(cookieParser(config.cookie.secret));
   });
 
   // Req.user
-  wrapEvents('session', () => {
+  wrap('session', () => {
     debug('session');
 
     let store = config.session.getStore(expressSession);
+
+    config.session.store = store;
     let sessionConfig = {
       key: config.session.name,
       secret: config.session.secret,
@@ -134,7 +154,7 @@ function init() {
   });
 
   // Req.feature
-  wrapEvents('xprmntl', () => {
+  wrap('xprmntl', () => {
     debug('xprmntl');
     let xprConfig = config.experiments;
 
@@ -159,31 +179,31 @@ function init() {
   });
 
   // Parse application/json
-  wrapEvents('json', () => {
+  wrap('json', () => {
     debug('json');
     app.use(bodyParser.json(config.bodyParser.json));
   });
 
   // Parse application/x-www-form-urlencoded
-  wrapEvents('urlencoded', () => {
+  wrap('urlencoded', () => {
     debug('urlencoded');
     app.use(bodyParser.urlencoded(config.bodyParser.urlencoded));
   });
 
   // Fake PUT and DELETE when clients don't support
-  wrapEvents('override', () => {
+  wrap('override', () => {
     debug('override');
     app.use(methodOverride(config.methodOverride));
   });
 
   // GZip all of our responses
-  wrapEvents('compress', () => {
+  wrap('compress', () => {
     debug('compress');
     app.use(compress(config.compression));
   });
 
   // Any routing level stuff
-  wrapEvents('routing', () => {
+  wrap('routing', () => {
     debug('routing');
     let dirs = config.dirnames.routes;
 
@@ -238,9 +258,29 @@ export function start(cb) {
 
   function appListen(port) {
     return new Promise((resolve) => {
+      if (config.sockets.server) {
+        return config.sockets.server.listen(port, () => resolve());
+      }
+
       app.listen(port, () => resolve());
     });
   }
+}
+
+var useBefore = app.useBefore = useAround('before.');
+var useAfter = app.useAfter = useAround('after.');
+
+function useAround(prefix) {
+  return function(method, name, handler) {
+    var eventName = prefix + method;
+
+    if (typeof name === 'function') throw new Error(`No name provided: useAround('${eventName}')`);
+    app.on(`${eventName}`, function(data) {
+      wrap(name, function() {
+        handler(data);
+      });
+    });
+  };
 }
 
 export function use(modules) {
@@ -251,6 +291,6 @@ export function use(modules) {
   });
 }
 
-export default { app, start, init, wrap: wrapEvents, use, Router: expRouter };
+export default { app, start, init, wrap, use, useAfter, useBefore, Router: expRouter };
 
-export { init, start, wrapEvents as wrap, app, use, expRouter as Router };
+export { init, start, wrap, app, use, useAfter, useBefore, expRouter as Router };

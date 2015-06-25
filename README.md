@@ -79,6 +79,10 @@ Jack lets you know when it's ready for you to pass in configuration. You can eit
 ```js
 import app, { start } from 'jack-stack/es6';
 
+// You can use either
+// app.on('config')
+// jack.useAfter('config')
+
 app.on('config', function(config) {
   // Here you can do something with the config:
   config.key = 'value';
@@ -129,16 +133,71 @@ start();
 ```
 
 ## Middleware Ordering
-If you want to add your own middleware during the initialization stage of the app, you can use the `before` and `after` events.
+The easiest way to add your own middleware during any stage in the initialization is to use `jack.useBefore` and `jack.useAfter`.
+These methods have the following signature:
+```js
+jack.useBefore(method, name, handler);
+jack.useAfter(method, name, handler);
+```
+- `method` - This is the event you want to neighbor your new handler.
+- `name` - A name for your handler. Make sure you check for uniqueness. I don't.
+- `handler` - Function to call when your turn for intialization comes.
+  - `handler` is called as: `handler({ app, config, registerDelay })`
+    - `app` - This is the Express app
+    - `config` - This is the full Jack configuration object (see config);
+    - `registerDelay` - This allows you to register asynchronous actions that require delay of startup (see Async Middleware)
+  - **jack.useAfter('config') is special. It only calls handler with the config object**
 
 ```js
-import { app, init, start } from 'jack-stack/es6';
+import jack from 'jack-stack/es6';
 
-app.on('before.init.routing', function() {
-  app.get('/', function(req, res, next) {
+jack.useBefore('routing', 'name:your:event', (data) => {
+  var app = data.app;
+
+  app.get('/', (req, res, next) => {
     // Something here before the core routing happens
   });
 });
+
+jack.useAfter('routing', 'sample:catchall', (data) => {
+  var config = data.config;
+
+  app.use((req, res, next) => {
+    console.log('I hate 404, so...');
+    res.sendStatus(config.preferredStatusCode);
+  });
+});
+```
+
+The manual equivalent of this is listening on the events and wrapping your own methods in their events:
+
+**If you forget to wrap and name your events, you cannot stick things before or after your own things later.**
+```js
+import { app, init, start, wrap } from 'jack-stack/es6';
+
+app.on('before.routing', () => {
+  wrap('name:your:event', () => {
+    app.get('/', (req, res, next) => {
+      // Something here before the core routing happens
+    });
+  });
+});
+
+app.on('after.routing', () => {
+  wrap('sample:catchall', (data) => {
+    var config = data.config;
+
+    app.use((req, res, next) => {
+      console.log('I hate 404, so...');
+      res.sendStatus(config.preferredStatusCode);
+    });
+
+    app.get('/', (req, res, next) => {
+      // Something here before the core routing happens
+    });
+  });
+});
+
 ```
 
 ### Async Middleware
@@ -148,9 +207,10 @@ We'll use the parameter that gets passed up with the event: `registerDelay`, whi
 
 #### ES6
 ```js
-import { app, init, start } from 'jack-stack/es6';
+import jack, { start } from 'jack-stack/es6';
 
-app.on('after.init.session', (registerDelay) => {
+jack.useAfter('session', (data) => {
+  var registerDelay = data.registerDelay;
 
   // Prep your async stuff
   var _promise = new Promise((resolve, reject) => {
@@ -184,10 +244,10 @@ start();
 var Promise = require('bluebird');
 var jack = require('jack-stack');
 var app = jack.app
-  , init = jack.init
   , start = jack.start;
 
-app.on('after.init.session', function(registerDelay) {
+jack.useAfter('session', function(data) {
+  var registerDelay = data.registerDelay;
 
   // Prep your async stuff
   var _promise = new Promise(function(resolve, reject) {
@@ -219,19 +279,17 @@ start();
 ```
 
 
-### Current events
-`before.init.`
-`after.init.`
-  - `static` - express.static
-  - `logging` - morgan
-  - `cookie` - cookie-parser
-  - `session` - express-session
-  - `xprmntl` - feature-client
-  - `json` - body-parser.json
-  - `urlencoded` - body-parser.urlencoded
-  - `override` - method-override
-  - `compress` - compression
-  - `routing` - Express router
+### Currently Built-in events you may wrap around:
+- `static` - express.static
+- `logging` - morgan
+- `cookie` - cookie-parser
+- `session` - express-session
+- `xprmntl` - feature-client
+- `json` - body-parser.json
+- `urlencoded` - body-parser.urlencoded
+- `override` - method-override
+- `compress` - compression
+- `routing` - Express router
 
 
 ### Custom Events
@@ -249,7 +307,7 @@ wrap('nameOfThis', () => {
 
 Elsewhere:
 ```js
-app.on('before.init.nameOfThis', () => {
+jack.useBefore('nameOfThis', 'nameOfNewThing', () => {
   app.use(somethingBeforeThat());
 });
 ```
@@ -269,7 +327,7 @@ wrap('nameOfThis', function() {
 
 Elsewhere:
 ```js
-app.on('before.init.nameOfThis', function() {
+jack.useBefore('nameOfThis', 'nameOfNewthing', function() {
   app.use(somethingBeforeThat());
 });
 ```
