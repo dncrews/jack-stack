@@ -110,24 +110,6 @@ function init() {
   app.emit('config', config);
   app.emit('after.config', config);
 
-  // Load static assets
-  wrap('static', () => {
-    debug('static');
-    var dirs = config.dirnames.static;
-
-    if (!Array.isArray(dirs)) dirs = [ dirs ];
-
-    dirs.map((dir) => {
-      app.use(express.static(dir));
-    });
-  });
-
-  // Log everything after this
-  wrap('logging', () => {
-    debug('logging');
-    app.use(morgan(config.morgan));
-  });
-
   // Req.cookie
   wrap('cookie', () => {
     debug('cookie');
@@ -151,6 +133,24 @@ function init() {
     if (store) sessionConfig.store = store;
 
     app.use(expressSession(sessionConfig));
+  });
+
+  // Load static assets
+  wrap('static', () => {
+    debug('static');
+    var dirs = config.dirnames.static;
+
+    if (!Array.isArray(dirs)) dirs = [ dirs ];
+
+    dirs.map((dir) => {
+      app.use(express.static(dir));
+    });
+  });
+
+  // Log everything after this
+  wrap('logging', () => {
+    debug('logging');
+    app.use(morgan(config.morgan));
   });
 
   // Req.feature
@@ -258,7 +258,7 @@ export function start(cb) {
 
   function appListen(port) {
     return new Promise((resolve) => {
-      if (config.sockets.server) {
+      if (config.sockets && config.sockets.server) {
         return config.sockets.server.listen(port, () => resolve());
       }
 

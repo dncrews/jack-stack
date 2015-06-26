@@ -156,24 +156,6 @@ function init() {
   app.emit('config', config);
   app.emit('after.config', config);
 
-  // Load static assets
-  wrap('static', function () {
-    debug('static');
-    var dirs = config.dirnames['static'];
-
-    if (!Array.isArray(dirs)) dirs = [dirs];
-
-    dirs.map(function (dir) {
-      app.use(_express2['default']['static'](dir));
-    });
-  });
-
-  // Log everything after this
-  wrap('logging', function () {
-    debug('logging');
-    app.use((0, _morgan2['default'])(config.morgan));
-  });
-
   // Req.cookie
   wrap('cookie', function () {
     debug('cookie');
@@ -197,6 +179,24 @@ function init() {
     if (store) sessionConfig.store = store;
 
     app.use((0, _expressSession2['default'])(sessionConfig));
+  });
+
+  // Load static assets
+  wrap('static', function () {
+    debug('static');
+    var dirs = config.dirnames['static'];
+
+    if (!Array.isArray(dirs)) dirs = [dirs];
+
+    dirs.map(function (dir) {
+      app.use(_express2['default']['static'](dir));
+    });
+  });
+
+  // Log everything after this
+  wrap('logging', function () {
+    debug('logging');
+    app.use((0, _morgan2['default'])(config.morgan));
   });
 
   // Req.feature
@@ -297,7 +297,7 @@ function start(cb) {
 
   function appListen(port) {
     return new _bluebird2['default'](function (resolve) {
-      if (config.sockets.server) {
+      if (config.sockets && config.sockets.server) {
         return config.sockets.server.listen(port, function () {
           return resolve();
         });
