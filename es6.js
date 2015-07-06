@@ -90,10 +90,13 @@ function wrap(name, fn) {
     config,
     registerDelay,
   };
+
   app.emit(`before.${name}`, eventData);
   app.emit(`before.init.${name}`, registerDelay);
   console.log(`${initOrder++}: ${name}`);
-  fn();
+
+  if (fn) fn();
+
   app.emit(`after.init.${name}`, registerDelay);
   app.emit(`after.${name}`, eventData);
 
@@ -108,7 +111,8 @@ function init() {
   initialized = true;
 
   app.emit('config', config);
-  app.emit('after.config', config);
+
+  wrap('config');
 
   // Req.cookie
   wrap('cookie', () => {
