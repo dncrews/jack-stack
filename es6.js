@@ -174,6 +174,8 @@ function init() {
     app.use(featureClient.express);
     app.use(featureClient.toggle);
 
+    if (xprConfig.cron) featureClient.cron(xprConfig.cron);
+
     delays.push(featureClient.announce()
       .catch(() => {
         // If there's no XPRMNTL Dashboard response,

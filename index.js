@@ -87,7 +87,8 @@ var routerMatch = (0, _express.Router)();
  */
 var config = {
   cookie: {
-    secret: 'You put the lime in the coconut' },
+    secret: 'You put the lime in the coconut'
+  },
   session: {
     name: 'sessionID',
     secret: 'What would the fox say if he knew...?',
@@ -98,16 +99,19 @@ var config = {
   experiments: ['placeholderExperiment'],
   bodyParser: {
     urlencoded: {
-      extended: false }
+      extended: false
+    }
   },
   morgan: 'dev',
   dirnames: {
     'static': [_path2['default'].join(process.cwd(), 'public')],
-    routes: [_path2['default'].join(process.cwd(), 'routes')] },
+    routes: [_path2['default'].join(process.cwd(), 'routes')]
+  },
   port: 5000,
   assign: function assign(newConfig) {
     Object.assign(config, newConfig);
-  } };
+  }
+};
 
 /**
  * Used to validate if experiments are enabled or not
@@ -135,11 +139,12 @@ function wrap(name, fn) {
   var eventData = {
     app: app,
     config: config,
-    registerDelay: registerDelay };
+    registerDelay: registerDelay
+  };
 
   app.emit('before.' + name, eventData);
   app.emit('before.init.' + name, registerDelay);
-  console.log('' + initOrder++ + ': ' + name);
+  console.log(initOrder++ + ': ' + name);
 
   if (fn) fn();
 
@@ -219,6 +224,8 @@ function init() {
 
     app.use(_featureClient2['default'].express);
     app.use(_featureClient2['default'].toggle);
+
+    if (xprConfig.cron) _featureClient2['default'].cron(xprConfig.cron);
 
     delays.push(_featureClient2['default'].announce()['catch'](function () {
       // If there's no XPRMNTL Dashboard response,
