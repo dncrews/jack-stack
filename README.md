@@ -151,7 +151,7 @@ jack.useAfter(method, name, handler);
 ```js
 import jack from 'jack-stack/es6';
 
-jack.useBefore('routing', 'name:your:event', (data) => {
+jack.useBefore('router', 'name:your:event', (data) => {
   var app = data.app;
 
   app.get('/', (req, res, next) => {
@@ -159,7 +159,7 @@ jack.useBefore('routing', 'name:your:event', (data) => {
   });
 });
 
-jack.useAfter('routing', 'sample:catchall', (data) => {
+jack.useBefore('stack-end', 'sample:catchall', (data) => {
   var config = data.config;
 
   app.use((req, res, next) => {
@@ -175,7 +175,7 @@ The manual equivalent of this is listening on the events and wrapping your own m
 ```js
 import { app, init, start, wrap } from 'jack-stack/es6';
 
-app.on('before.routing', () => {
+app.on('before.router', () => {
   wrap('name:your:event', () => {
     app.get('/', (req, res, next) => {
       // Something here before the core routing happens
@@ -183,7 +183,7 @@ app.on('before.routing', () => {
   });
 });
 
-app.on('after.routing', () => {
+app.on('before.stack-end', () => {
   wrap('sample:catchall', (data) => {
     var config = data.config;
 
@@ -289,7 +289,7 @@ start();
 - `urlencoded` - body-parser.urlencoded
 - `override` - method-override
 - `compress` - compression
-- `routing` - Express router
+- `router` - Express router
 
 
 ### Custom Events

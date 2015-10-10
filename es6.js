@@ -6,30 +6,24 @@ import path from 'path';
 /**
  * Module Dependencies
  */
-import bodyParser from 'body-parser';
 import compress from 'compression';
-import cookieParser from 'cookie-parser';
 import debugLib from 'debug';
 import express, { Router as expRouter } from 'express';
-import expressSession from 'express-session';
-import featureClient from 'feature-client';
-import glob from 'glob';
 import methodOverride from 'method-override';
-import morgan from 'morgan';
 import Promise from 'bluebird';
-import xprExpress from 'xpr-express';
-import xprToggle from 'xpr-toggle';
 
 /**
  * Local Dependencies
  */
+import plugins from './plugins';
+import Plugin from './plugins/plugin';
 
 /**
  * Local Constants
  */
 const app = express();
 const debug = debugLib('jack-stack');
-const routerMatch = expRouter();
+var dir = __dirname;
 
 /**
  * This config object will be overridable during the `config` event
@@ -67,10 +61,6 @@ var config = {
  */
 var delays = [];
 /**
- * Used to validate if experiments are enabled or not
- */
-var experimented = false;
-/**
  * Used to make sure the express app is initialized before starting
  */
 var initialized = false;
@@ -86,113 +76,34 @@ var initOrder = 1;
 function wrap(name, fn) {
   registeredEvents.push(name);
   let eventData = {
+    name,
     app,
     config,
-    registerDelay,
   };
 
+  app.emit('before', eventData);
   app.emit(`before.${name}`, eventData);
-  app.emit(`before.init.${name}`, registerDelay);
-  console.log(`${initOrder++}: ${name}`);
+  console.info(`${initOrder++}: ${name}`);
 
-  if (fn) fn();
+  /**
+   * Call the handler. If a promise is returned,
+   * delay startup until it is resolved
+   */
+  if (fn) registerDelay(fn());
 
-  app.emit(`after.init.${name}`, registerDelay);
   app.emit(`after.${name}`, eventData);
-
-  function registerDelay(promise) {
-    if (typeof promise.next !== 'function') return;
-    delays.push(promise);
-  }
+  app.emit('after', eventData);
 }
 
 function init() {
 
   initialized = true;
 
+  plugins.initialize();
+
   app.emit('config', config);
 
   wrap('config');
-
-  // Req.cookie
-  wrap('cookie', () => {
-    debug('cookie');
-    app.use(cookieParser(config.cookie.secret));
-  });
-
-  // Req.user
-  wrap('session', () => {
-    debug('session');
-
-    let store = config.session.getStore(expressSession);
-
-    config.session.store = store;
-    let sessionConfig = {
-      key: config.session.name,
-      secret: config.session.secret,
-      resave: false,
-      saveUninitialized: false
-    };
-
-    if (store) sessionConfig.store = store;
-
-    app.use(expressSession(sessionConfig));
-  });
-
-  // Load static assets
-  wrap('static', () => {
-    debug('static');
-    var dirs = config.dirnames.static;
-
-    if (!Array.isArray(dirs)) dirs = [ dirs ];
-
-    dirs.map((dir) => {
-      app.use(express.static(dir));
-    });
-  });
-
-  // Log everything after this
-  wrap('logging', () => {
-    debug('logging');
-    app.use(morgan(config.morgan));
-  });
-
-  // Req.feature
-  wrap('xprmntl', () => {
-    debug('xprmntl');
-    let xprConfig = config.experiments;
-
-    experimented = !!xprConfig;
-
-    if (!experimented) return;
-    if (Array.isArray(xprConfig)) xprConfig = { experiments: xprConfig };
-
-    featureClient.use(xprExpress());
-    featureClient.use(xprToggle());
-    featureClient.configure(xprConfig);
-
-    app.use(featureClient.express);
-    app.use(featureClient.toggle);
-
-    delays.push(featureClient.announce()
-      .catch(() => {
-        // If there's no XPRMNTL Dashboard response,
-        // I want to start the app anyway, just with the fallbacks
-        return Promise.resolve();
-      }));
-  });
-
-  // Parse application/json
-  wrap('json', () => {
-    debug('json');
-    app.use(bodyParser.json(config.bodyParser.json));
-  });
-
-  // Parse application/x-www-form-urlencoded
-  wrap('urlencoded', () => {
-    debug('urlencoded');
-    app.use(bodyParser.urlencoded(config.bodyParser.urlencoded));
-  });
 
   // Fake PUT and DELETE when clients don't support
   wrap('override', () => {
@@ -206,43 +117,7 @@ function init() {
     app.use(compress(config.compression));
   });
 
-  // Any routing level stuff
-  wrap('routing', () => {
-    debug('routing');
-    let dirs = config.dirnames.routes;
-
-    if (!Array.isArray(dirs)) dirs = [ dirs ];
-
-    // Dir order matters
-    dirs.forEach((dir) => {
-      var dirFiles = {};
-
-      glob.sync(path.join(dir, '**', '*.js'))
-        .forEach((filename) => {
-          let route = filename
-            .replace(dir, '') // Get just the file
-            .replace(/\.js$/, '') // Basename
-            .replace(/index$/, ''); // And use index as './'
-          dirFiles[ route ] = filename;
-        });
-
-      // Sort by the path, since '/' needs to come first
-      Object.keys(dirFiles).sort().forEach((route) => {
-        let filename = dirFiles[ route ];
-        debug(route, filename);
-        let file = require(filename);
-        if (file instanceof routerMatch.constructor) return app.use(route, file);
-
-        let instance = require(file);
-        if (typeof instance === 'function' && instance.length === 2) return instance(app);
-
-        console.error(`\n\n\nFile incompatible and not loaded: ${file}\n\n\n`);
-      });
-    });
-
-    debug('routing done');
-  });
-
+  wrap('stack-end');
 }
 
 export function start(cb) {
@@ -278,10 +153,10 @@ function useAround(prefix) {
   return function(method, name, handler) {
     var eventName = prefix + method;
 
-    if (typeof name === 'function') throw new Error(`No name provided: useAround('${eventName}')`);
+    if (typeof name === 'function' || !name) throw new Error(`No name provided: useAround('${eventName}')`);
     app.on(`${eventName}`, function(data) {
       wrap(name, function() {
-        handler(data);
+        return handler(data);
       });
     });
   };
@@ -295,6 +170,35 @@ export function use(modules) {
   });
 }
 
-export default { app, start, init, wrap, use, useAfter, useBefore, Router: expRouter };
+export function configure(name, handler, optional) {
+  useBefore(name, `${name}:configure`, function() {
+    let plugin = plugins.get(name);
 
-export { init, start, wrap, app, use, useAfter, useBefore, expRouter as Router };
+    if (typeof handler === 'object') {
+      var _config = handler;
+      handler = function(config, configure) {
+        configure(_config);
+      };
+    }
+
+    // Only the `optional` flag allows this to fail silently
+    if (!plugin && optional) return;
+
+    /**
+     * Allow apps to configure plugins
+     * If they return a Promise, also delay startup
+     */
+    return handler(plugin.config, plugin.configure);
+  });
+}
+
+function registerDelay(promise) {
+  if (!promise || typeof promise.then !== 'function') return;
+  delays.push(promise);
+}
+
+plugins.load();
+
+export default { app, dir, init, Plugin, plugins, Router: expRouter, start, use, useAfter, useBefore, wrap, };
+
+export { init, start, wrap, app, dir, useAfter, useBefore, expRouter as Router, Plugin, plugins };
